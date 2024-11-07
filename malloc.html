@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS252 - Malloc Project</title>
+    <style>
+        body {
+            background-color: #f7f7f7;
+            color: #333;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        a {
+            color: #333;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        .code-block {
+            background-color: #eee;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        pre {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 align="center">Malloc Project</h1>
+        
+        <h2>Project Description:</h2>
+        <p>
+            <strong>Overview:</strong> This project involves implementing a custom memory allocator similar to `malloc`, `free`, and other memory management functions in C. 
+            Our allocator manages memory by requesting large chunks from the OS, tracking allocated and freed blocks, and optimizing memory usage through advanced techniques 
+            like multiple free lists, boundary tags, and coalescing free blocks.
+        </p>
+        <p><strong>GitHub Repository:</strong> <a href="https://github.com/bolun2224/Malloc" target="_blank">https://github.com/bolun2224/Malloc</a></p>
+        
+        <h2>Advantage</h2>
+
+        <ul>
+            <li><strong>Efficient Memory Management with Multiple Free Lists:</strong> This malloc project uses multiple free lists, each dedicated to blocks of a particular size range. This structure minimizes search time by allowing the allocator to quickly locate an appropriately sized block, avoiding the need to scan through all available blocks. With free lists organized by size, the allocator can handle memory requests faster and with fewer operations, reducing overall allocation and deallocation time.</li>
+            <li><strong>Boundary Tags for Quick Coalescing:</strong> By implementing boundary tags, each memory block has size information at both its beginning and end. This structure enables the allocator to coalesce (merge) adjacent free blocks efficiently in constant time, without needing to traverse or check other blocks in the free list. This fast coalescing mechanism reduces memory fragmentation, allowing the allocator to reuse larger contiguous blocks when needed.</li>
+            <li><strong>Fenceposts for Memory Safety:</strong>Fenceposts act as markers at the beginning and end of each memory chunk allocated by the system. These markers ensure that coalescing does not extend beyond allocated boundaries, preventing accidental access to memory outside the allocator’s control. Fenceposts add a layer of safety, ensuring that coalescing operations do not interfere with non-allocated memory regions, which could lead to undefined behavior.</li>
+            <li><strong>Optimized Metadata with the header Structure:</strong>Each block’s header structure contains essential metadata, including pointers for the free list, block size, and allocation status. By storing this information efficiently within each block, the allocator minimizes metadata overhead, preserving more space for actual user data. The header structure also facilitates quick traversal of the free list, allocation, and coalescing.</li>
+            <li><strong>Customizable Block Splitting for Memory Efficiency:</strong> When a requested block size is smaller than an available free block, the allocator can split the free block into two, using one part for allocation and keeping the remainder in the free list. This feature minimizes wasted memory, as it allows large free blocks to be split into smaller ones, matching diverse allocation requests more precisely. This granularity improves memory usage efficiency, ensuring that larger blocks are not allocated when only a small amount of memory is requested.</li>
+        </ul>
+
+        <h2>Code Descriptions</h2>
+
+        <div class="code-block">
+            <h3>Structure Definition - <code>header</code> Structure</h3>
+            <pre><code>typedef struct header {
+    size_t size;          // Size of the memory block
+    struct header *prev;  // Pointer to previous block in the free list
+    struct header *next;  // Pointer to next block in the free list
+    int free;             // Indicates if block is free or allocated
+} header;</code></pre>
+            <p>
+                This <code>header</code> struct represents each memory block’s metadata, including its size, neighboring blocks, and status (allocated or free). 
+                This structure is essential for managing the free list and supports quick traversal, coalescing, and searching.
+            </p>
+        </div>
+
+        <div class="code-block">
+            <h3>Allocation - <code>allocate_object</code> Function</h3>
+            <pre><code>static inline header * allocate_object(size_t raw_size) {
+    size_t allocate_size = ((raw_size + ALLOC_HEADER_SIZE + sizeof(size_t) - 1) / 8) * 8;
+    header * hdr = ptr_to_approp_freelist(allocate_size);
+    while (hdr == NULL) {
+        insert_chunk_to_freelist();
+        hdr = ptr_to_approp_freelist(allocate_size);
+    }
+    set_state(hdr, ALLOCATED);
+    return hdr;
+}</code></pre>
+            <p>
+                <code>allocate_object</code> calculates the required block size, searches the appropriate free list for a matching block, and marks it as allocated. 
+                If no suitable block is found, it requests additional memory from the OS. This function is central to memory allocation, ensuring efficient use of 
+                existing memory and reducing the need for frequent OS calls.
+            </p>
+        </div>
+
+        <div class="code-block">
+            <h3>Finding Free Block - <code>ptr_to_approp_freelist</code> Function</h3>
+            <pre><code> static inline header * ptr_to_approp_freelist(size_t block_size) {
+    int idx = (int) (block_size - ALLOC_HEADER_SIZE) / sizeof(size_t) - 2;
+    idx = idx < 58? idx : 58; 
+    for (int i = idx; i < N_LISTS; i++) {
+        header * freelist = &freelistSentinels[i];
+        for(header * cur = freelist->next; cur != freelist; cur = cur->next) {
+        if (get_size(cur) - 32 >= block_size) {
+            return split_block(cur, block_size);
+        }
+        if (get_size(cur) >= block_size){
+            delete_from_freelist(cur);
+            return cur;
+        }
+        } 
+    }
+    return NULL;
+    }</code></pre>
+            <p>
+                <code>ptr_to_approp_freelist</code> checks the requested block size and returns a pointer to the corresponding free list. 
+                This is crucial for faster allocation as it enables size-based categorization, minimizing search time by limiting it to blocks 
+                of similar size, rather than the entire list.
+            </p>
+        </div>
+
+        <div class="code-block">
+            <h3>Deallocation - <code>deallocate_object</code> Function</h3>
+            <pre><code>static inline void deallocate_object(void * p) {
+    header * current = ptr_to_header(p);
+    set_state(current, UNALLOCATED);
+    if (get_state(right) == ALLOCATED && get_state(left) == ALLOCATED) {
+        insert_into_freelist(current);
+    } else {
+        // Additional coalescing logic here
+    }
+}</code></pre>
+            <p>
+                <code>deallocate_object</code> marks a block as free and inserts it back into the free list. If adjacent blocks are also free, 
+                it coalesces them into a larger block, helping to prevent fragmentation. This function is important for managing free memory 
+                efficiently and ensuring that fragmented blocks can be reused for future allocations.
+            </p>
+        </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="index.html" style="
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: white;
+            color: black;
+            border-radius: 5px;
+            border: 1px solid #333;
+            text-decoration: none;
+        ">Back to Main Page</a>
+    </div>
+<br/>
+<br/>
+<br/>
+</body>
+</html>

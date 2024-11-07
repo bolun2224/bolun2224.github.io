@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS252 Shell Project</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.6; 
+            text-align: center; 
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1, h2, h3 { color: #333; }
+        pre { 
+            background-color: #e0e0e0; 
+            padding: 10px; 
+            border-radius: 5px; 
+            display: inline-block; 
+            text-align: left; 
+        }
+        code { 
+            font-size: 1.1em; 
+            color: #d9534f;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: auto; 
+            padding: 20px;
+        }
+        a {
+            text-decoration: none; /* Remove underline for all links */
+            color: inherit; /* Maintain link color as text color */
+        }
+    </style>
+    
+</head>
+<body>
+
+    <div class="container">
+        <h1 align="center"></h1align>Shell Project</h1>
+        <h2>Project Description:</h2>
+        <p><strong>Overview:</strong> The shell project is a command-line interpreter that allows users to interact directly with the operating 
+            system by typing and executing commands. This custom shell supports various standard shell functionalities, including process creation, 
+            allowing users to run commands and programs as separate processes. Users can perform file manipulations, navigate directories, 
+            and control I/O redirection by redirecting input from or output to files. Additionally, the shell enables the use of pipelines to 
+            chain commands, where the output of one command becomes the input of the next, which is useful for filtering and processing data in sequence. 
+            Environment variable management and wildcard expansion provide further flexibility, allowing for customized command environments and 
+            pattern-based file handling. Overall, this shell empowers users with a comprehensive environment for scripting, file management, 
+            and process control directly from the command line.
+        </p>
+        <p><strong>GitHub Repository:</strong> <a href="https://github.com/bolun2224/Shell-Project" target="_blank">https://github.com/bolun2224/Shell-Project</a></p>
+        <h2>Project Structure</h2>
+
+        <p>The project is organized into multiple classes, each handling a specific part of the shell's functionality.</p>
+
+        <h3>1. Command Classes</h3>
+        <p>These classes represent and execute shell commands:</p>
+
+        <ul style="text-align: left;">
+            <li><strong>SimpleCommand</strong>: Represents a single command with arguments.</li>
+            <li><strong>PipeCommand</strong>: Manages piped commands, input/output redirection, and background execution.</li>
+            <li><strong>IfCommand</strong>: Executes conditional commands based on a test condition.</li>
+        </ul>
+
+    <h3>2. Shell Class</h3>
+    <p>The Shell class orchestrates the command processing, execution, and prompt handling. It supports handling Ctrl-C, background processes, and command parsing with Lex and Yacc.</p>
+
+    <h2>Code Details and Explanations</h2>
+
+    <h3>Pipe and Input/Output Redirection</h3>
+    <pre><code class="language-cpp">
+    void Command::execute() {
+        int ret;
+        int tmpin = dup(0);  // Save the standard input
+        int tmpout = dup(1); // Save the standard output
+    
+        int fdin;
+        if (_inputFile) {
+            fdin = open(_inputFile, O_RDONLY);
+        } else {
+            fdin = dup(tmpin);
+        }
+    
+        for (int i = 0; i < _numSimpleCommands; i++) {
+            // Redirect input
+            dup2(fdin, 0);
+            close(fdin);
+    
+            int fdout;
+            if (i == _numSimpleCommands - 1) {
+                if (_outputFile) {
+                    fdout = open(_outputFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                } else {
+                    fdout = dup(tmpout);
+                }
+            } else {
+                int fdpipe[2];
+                pipe(fdpipe);
+                fdout = fdpipe[1];
+                fdin = fdpipe[0];
+            }
+    
+            // Redirect output
+            dup2(fdout, 1);
+            close(fdout);
+    
+            // Create child process
+            ret = fork();
+            if (ret == 0) {
+                execvp(_simpleCommands[i]->_args[0], _simpleCommands[i]->_args);
+                perror("execvp");
+                _exit(1);
+            }
+        }
+    
+        dup2(tmpin, 0);  // Restore standard input
+        dup2(tmpout, 1); // Restore standard output
+        close(tmpin);
+        close(tmpout);
+    
+        if (!_background) {
+            waitpid(ret, NULL, 0); // Wait for the last child process if not running in background
+        }
+    }        
+</code></pre>
+    <p>
+        
+In Shell, process creation is managed by the execute method using <code>fork()</code> and <code>execvp()</code> to run commands. Standard input and output are saved and redirected as needed for each command in the pipeline. 
+For each command, the shell duplicates the necessary file descriptors, executes the command in a child process, and uses pipes to connect multiple commands if there are pipes. After command execution, 
+it restores the standard input and output for the shell. If the command is not run in the background, the shell waits for the last process to complete.
+    </p>
+
+    <h3>expand Wildcards</h3>
+    <pre><code class="language-cpp">
+    void expandWildcardsIfNecessary(char *arg) {
+        if (!strchr(arg, '*') && !strchr(arg, '?')) {
+            Command::_currentSimpleCommand->insertArgument(arg);
+            return;
+        }
+        char *regex = (char *)malloc(2 * strlen(arg) + 10);
+        char *a = arg;
+        char *r = regex;
+        *r++ = '^';
+        while (*a) {
+            if (*a == '*') { *r++ = '.'; *r++ = '*'; }
+            else if (*a == '?') { *r++ = '.'; }
+            else if (*a == '.') { *r++ = '\\'; *r++ = '.'; }
+            else { *r++ = *a; }
+            a++;
+        }
+        *r++ = '$'; *r = 0;
+    
+        regex_t re;
+        if (regcomp(&re, regex, REG_EXTENDED|REG_NOSUB) != 0) return;
+        DIR *dir = opendir(".");
+        struct dirent *ent;
+        while ((ent = readdir(dir)) != NULL) {
+            if (regexec(&re, ent->d_name, 0, NULL, 0) == 0) {
+                Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
+            }
+        }
+        closedir(dir);
+        regfree(&re);
+        free(regex);
+    }
+</code></pre>
+    <p>
+        
+The expandWildcardsIfNecessary function enables wildcard expansion for arguments with * or ? by converting these symbols into regular expressions. 
+If no wildcards are present, the argument is added as-is. For wildcard matches, the function transforms * to .* and ? to ., ensuring the pattern matches filenames in the specified directory. 
+It compiles this pattern and checks each directory entry, adding matches to the command's arguments. Hidden files are skipped unless explicitly requested, and results are added in sorted order to match typical shell behavior.
+    </p>
+
+
+
+
+    <h2>Expected Results and Sample Commands</h2>
+
+    <h3>Basic Command Execution</h3>
+    <pre><code>myshell> ls -al</code></pre>
+    <p>Expected Output: Lists all files in the current directory with detailed file information.</p>
+
+    <pre><code>myshell> echo "Hello World"</code></pre>
+    <p>Expected Output: Prints "Hello World" to the console.</p>
+
+    <h3>If Command Execution</h3>
+    <pre><code>myshell> if [ -f test.txt ]; then echo "File exists"; fi</code></pre>
+    <p>Expected Output: If <code>test.txt</code> exists, it prints "File exists". Otherwise, no output.</p>
+
+    <pre><code>myshell> int x = 5
+myshell> if [ $x -eq 5 ]; then echo "x is 5"; fi</code></pre>
+    <p>Expected Output: If <code>x</code> is set to <code>5</code>, it prints "x is 5". Otherwise, no output.</p>
+
+    <h3>Piping</h3>
+    <pre><code>myshell> ls -al | grep test</code></pre>
+    <p>Expected Output: Filters the output of <code>ls -al</code> to show only lines containing the word "test".</p>
+
+    <pre><code>myshell> cat test.txt | sort</code></pre>
+    <p>Expected Output: Displays the contents of <code>test.txt</code>, sorted alphabetically line by line.</p>
+
+    <h3>File Redirection</h3>
+    <pre><code>myshell> ls -al > output.txt</code></pre>
+    <p>Expected Output: Redirects the output of <code>ls -al</code> to the file <code>output.txt</code>.</p>
+
+    <pre><code>myshell> cat < output.txt > sorted.txt</code></pre>
+    <p>Expected Output: Reads from <code>output.txt</code> and writes it to <code>sorted.txt</code>.</p>
+
+    <h3>Environment Variables</h3>
+    <pre><code>myshell> setenv PATH /usr/bin
+myshell> echo ${PATH}</code></pre>
+    <p>Expected Output: Prints the value of the environment variable <code>PATH</code>, which should be <code>/usr/bin</code>.</p>
+
+</div>
+<div style="text-align: center; margin-top: 20px;">
+    <a href="index.html" style="
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: white;
+        color: black;
+        border-radius: 5px;
+        border: 1px solid #333;
+        text-decoration: none;
+    ">Back to Main Page</a>
+</div>
+<br/>
+<br/>
+<br/>
+</body>
+</html>

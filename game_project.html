@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controlled Chaos - Game Project</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        .gif-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .gif-container img {
+            width: 100%;
+            height: auto;
+            max-width: 500px;
+            border: 2px solid #444;
+        }
+        .code-block {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        pre {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 align="center">Controlled Chaos</h1>
+        <br>
+        <h2>Project Description:</h2>
+        <p>
+            <strong>Overview:</strong> Controlled Chaos is a roguelike game that combines curated experiences with randomly generated content, featuring randomly generated levels, enemy encounters, and item discoveries. The game aims to distinguish itself by incorporating themes of randomness in both level design and artwork, along with dynamic item functions that players discover and document in-game. The objective is to create an engaging experience for players who enjoy problem-solving and replayability.
+        </p>
+        <h3>Team Members:</h3>
+        <ul>
+            <li>Bolun Zhang</li>
+            <li>Karina Abraham</li>
+            <li>Cameron Hofbauer</li>
+            <li>Javad Baghirov</li>
+            <li>Zayden Newquist</li>
+            <li>Jack Wagne</li>
+        </ul>
+        <p><strong>GitHub Repository:</strong> <a href="https://github.com/Javad228/Controlled-Chaos-GameDev" target="_blank">https://github.com/Javad228/Controlled-Chaos-GameDev</a></p>
+        <h2>Tools and Technologies:</h2>
+        <ul>
+            <li><strong>Programming Language:</strong> Java</li>
+            <li><strong>Framework:</strong> LWJGL (Lightweight Java Game Library) for building the game engine.</li>
+            <li><strong>APIs and Libraries:</strong></li>
+            <ul>
+                <li>OpenGL for rendering visuals and animations.</li>
+                <li>GLFW for managing windows and handling user inputs.</li>
+                <li>OpenAL for sound effects and background music.</li>
+                <li>GSON for saving game states using JSON.</li>
+            </ul>
+        </ul>
+        <h2>My Role in the Project:</h2>
+        <p>
+            I have been responsible for several key components and user stories throughout the development of Controlled Chaos:
+        </p>
+        <ul>
+            <li>In Sprint 1, I worked on creating the methods for pausing/resuming the game and implementing the quit functionality.</li>
+            <li>In Sprint 2, I developed the room generation method, ensuring the creation of different enemy and boss encounters for each playthrough.</li>
+            <li>In Sprint 3, I took charge of implementing the tutorial system, designing the mini-map feature, and enabling players to write and save notes on the map.</li>
+        </ul>
+
+        <h2>Game GIFs and Descriptions:</h2>
+        
+        <div class="gif-container">
+            <h3>Attack</h3>
+            <img src="game_project_gif/game_attack.gif" alt="Game Attack Animation">
+            <p>Demonstrates the attack mechanics of the game where the character fights enemies.</p>
+        </div>
+
+        <div class="gif-container">
+            <h3>Maps</h3>
+            <img src="game_project_gif/game_maps.gif" alt="Game Maps Animation">
+            <p>Shows the map navigation and room generation features of the game.</p>
+        </div>
+
+        <div class="gif-container">
+            <h3>NPC Interaction</h3>
+            <img src="game_project_gif/game_npc.gif" alt="NPC Interaction Animation">
+            <p>Interaction with NPCs within the game, showcasing dialogue and quest mechanics.</p>
+        </div>
+
+        <div class="gif-container">
+            <h3>Save</h3>
+            <img src="game_project_gif/game_save.gif" alt="Save Mechanism Animation">
+            <p>Demonstrates the game save and load feature, using JSON to maintain states.</p>
+        </div>
+
+        <div class="gif-container">
+            <h3>Tutorial</h3>
+            <img src="game_project_gif/game_tutorial.gif" alt="Game Tutorial Animation">
+            <p>Displays the tutorial system, guiding players through the basic mechanics.</p>
+        </div>
+
+        <div class="gif-container">
+            <h3>Inventory</h3>
+            <img src="game_project_gif/game_inventory.gif" alt="Inventory System Animation">
+            <p>Shows the inventory management system, allowing players to manage items.</p>
+        </div>
+
+        <h2>Code Descriptions:</h2>
+
+        <div class="code-block">
+            <h3>1. checkLootCollision(Character entity, Loot target)</h3>
+            <pre><code>public boolean checkLootCollision(Character entity, Loot target) {
+    if (target == null) return false;
+    
+    entity.collisionOn = false;
+    entity.solidArea.x = entity.xCoord + entity.solidArea.x;
+    entity.solidArea.y = entity.yCoord + entity.solidArea.y;
+    
+    target.solidArea.x = target.getxCoord() + target.solidArea.x;
+    target.solidArea.y = target.getyCoord() + target.solidArea.y;
+    
+    if (entity.solidArea.intersects(target.solidArea)) {
+        entity.collisionOn = true;
+    }
+
+    // Resetting to original coordinates after checking collision.
+    entity.solidArea.y = entity.collisionAreaDefaultY;
+    entity.solidArea.x = entity.collisionAreaDefaultX;
+    target.solidArea.x = target.collisionAreaDefaultX;
+    target.solidArea.y = target.collisionAreaDefaultY;
+
+    return entity.collisionOn;
+}</code></pre>
+            <p>Explanation: This function checks whether the solid area of the character intersects with that of the loot. If they intersect, it sets collisionOn to true, indicating a collision. It then resets the solid area coordinates to their default values to prepare for the next frame.</p>
+        </div>
+
+        <div class="code-block">
+            <h3>2. nextLevel()</h3>
+            <pre><code>public void nextLevel() {
+    this.invalidate();
+    Audio.stopMusic();
+    getPlayer().incrementLevel();
+    this.rooms = Room.generateNewLevel(getPlayer().getGameDifficulty(), keyH, this);
+    setCurrentRoomNum(0);
+    setLevelComplete(false);
+    getPlayer().setxCoord(CoordinateWizard.getX(getCurrentRoomNum()));
+    getPlayer().setyCoord(CoordinateWizard.getY(getCurrentRoomNum()));
+    initializeLevelClocks();
+    this.validate();
+    Audio.openingMusic();
+}</code></pre>
+            <p>Explanation: This function stops the current level music, updates the player’s level, generates new rooms for the next level, and resets the player’s coordinates. It also reinitializes level clocks and restarts the music.</p>
+        </div>
+
+        <div class="code-block">
+            <h3>3. run()</h3>
+            <pre><code>public void run() {
+    double drawInterval = 1000000000.0 / fps;
+    double delta = 0;
+    long lastTime = System.nanoTime();
+
+    while(gameThread != null){
+        long currentTime = System.nanoTime();
+        delta += (currentTime - lastTime) / drawInterval;
+        lastTime = currentTime;
+
+        if (delta >= 1) {
+            update();
+            repaint();
+            delta--;
+        }
+    }
+}</code></pre>
+            <p>Explanation: This function is the main game loop, where update() is called to progress game logic and repaint() is used to render the frame. It maintains a consistent frame rate by adjusting delta to control frame timing, ensuring smooth gameplay.</p>
+        </div>
+
+    </div>
+<div style="text-align: center; margin-top: 20px;">
+    <a href="index.html" style="
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: white;
+        color: black;
+        border-radius: 5px;
+        border: 1px solid #333;
+        text-decoration: none;
+    ">Back to Main Page</a>
+</div>
+<br/>
+<br/>
+<br/>
+</body>
+</html>

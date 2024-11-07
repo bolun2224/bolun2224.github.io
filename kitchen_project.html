@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Companion - Recipe Project</title>
+    <style>
+        body {
+            background-color: #f7f7f7;
+            color: #333;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        a {
+            color: #333;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        .image-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .image-container img {
+            width: 100%;
+            height: auto;
+            max-width: 3000px;
+            border: 1px solid #ddd;
+        }
+        .code-block {
+            background-color: #eee;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        pre {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 align="center">Kitchen Companion</h1>
+        <br>
+        <h2>Project Description:</h2>
+        <p>
+            <strong>Overview:</strong> Kitchen Companion is a web-based recipe library that enables users to discover, add, and manage recipes efficiently. It provides features like recipe search, filtering, rating, and personal recommendations. It also includes functionalities for meal planning and shopping list generation.
+        </p>
+        <h3>Team Members:</h3>
+        <ul>
+            <li>Bolun Zhang</li>
+            <li>Thomas Hynes</li>
+            <li>Wonho Lee</li>
+            <li>Caroline Lee</li>
+            <li>Richard Chang</li>
+            <li>Javad Baghirov</li>
+        </ul>
+        <p><strong>GitHub Repository:</strong> <a href="https://github.com/CS407-Kitchen-Companion" target="_blank">https://github.com/CS407-Kitchen-Companion</a></p>
+
+        <h2>Tools and Technologies:</h2>
+        <ul>
+            <li><strong>Frontend:</strong> NextJS</li>
+            <li><strong>Backend:</strong> Spring Boot with Java</li>
+            <li><strong>Database:</strong> PostgreSQL</li>
+            <li><strong>File Storage:</strong> Amazon S3</li>
+        </ul>
+
+        <h2>My Role in the Project:</h2>
+        <p>
+            My contributions to the project include implementing and testing various backend features:
+        </p>
+        <ul>
+            <li>In Sprint 1, I developed the logout feature and the backend logic for password change.</li>
+            <li>In Sprint 2, I implemented account deletion functionality and backend support for group search.</li>
+            <li>In Sprint 3, I assisted with backend refactoring and improved authentication processes.</li>
+        </ul>
+
+        <h2>Pictures and Descriptions:</h2>
+
+        <div class="image-container">
+            <h3>Login Page</h3>
+            <img src="kitchen_project_pic/kitchen_login.png" alt="Login Page">
+            <p>A simple login page with fields for username and password, and options to register or recover a password.</p>
+        </div>
+
+        <div class="image-container">
+            <h3>Main Page</h3>
+            <img src="kitchen_project_pic/kitchen_main.png" alt="Main Page">
+            <p>The main page displays a list of recipes with filtering options based on appliances, servings, cook time, and difficulty level.</p>
+        </div>
+
+        <div class="image-container">
+            <h3>Add Recipe Page</h3>
+            <img src="kitchen_project_pic/kitchen_recipe.png" alt="Add Recipe Page">
+            <p>Users can add new recipes, including title, image, ingredients, and directions.</p>
+        </div>
+
+        <div class="image-container">
+            <h3>Registration Page</h3>
+            <img src="kitchen_project_pic/kitchen_register.png" alt="Registration Page">
+            <p>The registration page with fields for email, username, and password to create a new account.</p>
+        </div>
+
+        <h2>Code Descriptions:</h2>
+
+        <div class="code-block">
+            <h3>1. createAuthenticationToken (Login)</h3>
+            <pre><code>public ResponseEntity<?> createAuthenticationToken(@RequestBody Map<String, String> payload) {
+    try {
+        authenticate(payload.get("username"), payload.get("password"));
+        UserDetails userDetails = userDetailsService.loadUserByUsername(payload.get("username"));
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                        .orElseThrow(() -> new UsernameNotFoundException("No such username"));
+        if (!user.isVerified()) {
+            return ResponseEntity.status(400).body(new ErrorResponse(400, "Please verify your email."));
+        }
+        String token = jwtTokenUtil.generateToken(userDetails);
+        return ResponseEntity.ok(new JwtResponse(token, user.getId()));
+    } catch (Exception e) {
+        return ResponseEntity.status(500).body(new ErrorResponse("Unknown Error"));
+    }
+}</code></pre>
+            <p>Explanation: This function authenticates the user, checks email verification, and generates a JWT token if successful.</p>
+        </div>
+
+        <div class="code-block">
+            <h3>2. addRecipe (Add Recipe)</h3>
+            <pre><code>public ResponseEntity<?> addRecipe(@RequestBody @Valid NewRecipeRequest payload) {
+    User user = userService.getAuthUser();
+    if (user == null) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(401, "You must be logged in to create a new recipe."));
+    }
+    try {
+        Long createdBy = user.getId();
+        return recipeService.createRecipe(payload, createdBy);
+    } catch (Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse(500, "Internal Server Error"));
+    }
+}</code></pre>
+            <p>Explanation: This function adds a new recipe to the database. It verifies if the user is logged in and then saves the recipe data.</p>
+        </div>
+
+        <div class="code-block">
+            <h3>3. searchRecipes (Search and Filter Recipes)</h3>
+            <pre><code>public ResponseEntity<GenericResponse> searchRecipes(@RequestParam(required = false) String title,
+                   @RequestParam(required = false) List&lt;String&gt; tags, ...) {
+    List&lt;Recipe&gt; recipes = recipeService.searchRecipesByFilters(title, tags, appliances, ...);
+    if (recipes.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new GenericResponse(404, "No recipes found"));
+    }
+    return ResponseEntity.ok(new GenericResponse(recipes));
+}</code></pre>
+            <p>Explanation: This function searches for recipes based on filters like title, tags, and appliances, and returns a list of matching recipes.</p>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="index.html" style="
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+        ">Back to Main Page</a>
+    </div>
+<br/>
+<br/>
+<br/>
+</body>
+</html>
